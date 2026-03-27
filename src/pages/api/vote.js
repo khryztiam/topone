@@ -6,10 +6,13 @@
  * 1. Valida token (existe, no expiró, no fue usado)
  * 2. Inserta voto anónimo en anonymous_results (categoria = 'general')
  * 3. Marca token como usado y lo elimina
+ * 
+ * 🔒 PROTECCIÓN: Rate limiting - máximo 1 voto por usuario por día
  */
 import supabaseAdmin from '@/lib/supabaseAdmin';
+import { rateLimit } from '@/lib/rateLimit';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
   }
@@ -24,16 +27,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Nominado inválido' });
   }
 
-  const kiosk_user_id = process.env.NEXT_PUBLIC_KIOSK_USER_ID || 'demo-kiosk-l15';
-
-  // Si hay Authorization header, usar el UUID real del kiosco autenticado
-  let resolvedKioskId = kiosk_user_id;
+  // Obtener kiosk_user_id del JWT del usuario autenticado
   const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith('Bearer ')) {
-    const tkn = authHeader.slice(7);
-    const { data: { user } } = await supabaseAdmin.auth.getUser(tkn);
-    if (user) resolvedKioskId = user.id;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token requerido' });
   }
+  const tkn = authHeader.slice(7);
+  const { data: { user } } = await supabaseAdmin.auth.getUser(tkn);
+  if (!user) {
+    return res.status(401).json({ error: 'Token inválido o expirado' });
+  }
+  const resolvedKioskId = user.id;
 
   try {
     // 1. Validar token
@@ -88,3 +92,10 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 }
+
+// Exportar con rate limiting: máximo 1 voto por usuario por día (86400000 ms)
+export default rateLimit(handler, {
+  max: 1,
+  window: 86400000, // 24 horas
+  key: 'user'       // Basado en JWT (user ID)
+});

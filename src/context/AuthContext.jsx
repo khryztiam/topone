@@ -5,13 +5,15 @@ import { supabase } from '@/lib/supabaseClient';
 const AuthContext = createContext(null);
 
 // Rutas que no requieren autenticación
-const PUBLIC_ROUTES = ['/login'];
+const PUBLIC_ROUTES = ['/'];
 // Rutas exclusivas del kiosco (sin sidebar, sin rol admin requerido)
-const KIOSK_ROUTES = ['/'];
+const KIOSK_ROUTES = ['/votacion'];
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);     // datos de app_users
+  const [user, setUser] = useState(null);       // datos de Supabase Auth
   const [session, setSession] = useState(null);
+  const [role, setRole] = useState(null);       // 'admin' o 'kiosk'
+  const [status, setStatus] = useState(null);   // 'active' o 'inactive'
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -19,7 +21,7 @@ export function AuthProvider({ children }) {
     // Cargar sesión inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchAppUser(session.access_token);
+      if (session) fetchAppUser(session);
       else setLoading(false);
     });
 
@@ -28,9 +30,11 @@ export function AuthProvider({ children }) {
       async (event, session) => {
         setSession(session);
         if (session) {
-          await fetchAppUser(session.access_token);
+          await fetchAppUser(session);
         } else {
           setUser(null);
+          setRole(null);
+          setStatus(null);
           setLoading(false);
         }
       }
@@ -39,32 +43,56 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function fetchAppUser(accessToken) {
+  async function fetchAppUser(session) {
     try {
       const res = await fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
       if (!res.ok) {
-        setUser(null);
-        return;
+        throw new Error('Failed to fetch user data');
       }
       const data = await res.json();
-      if (data.user) setUser(data.user);
-    } catch {
+      
+      if (data.user) {
+        setUser(data.user);
+        setRole(data.user.role || 'kiosk');
+        setStatus(data.user.status || 'active');
+        
+        // ⚠️ CRÍTICO: Si usuario no está activo, hacer logout
+        if (data.user.status === 'inactive') {
+          console.warn('[Auth] Usuario inactivo detectado, haciendo logout');
+          await supabase.auth.signOut();
+          setUser(null);
+          setRole(null);
+          setStatus(null);
+        }
+      } else {
+        setUser(null);
+        setRole(null);
+        setStatus(null);
+      }
+    } catch (err) {
+      console.error('[Auth] Error fetching user:', err);
       setUser(null);
+      setRole(null);
+      setStatus(null);
     } finally {
       setLoading(false);
     }
   }
 
   async function signIn(email, password) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    return data;
   }
 
   async function signOut() {
     await supabase.auth.signOut();
-    router.push('/login');
+    setUser(null);
+    setRole(null);
+    setStatus(null);
+    router.push('/');
   }
 
   // Protección de rutas
@@ -73,22 +101,29 @@ export function AuthProvider({ children }) {
 
     const path = router.pathname;
     const isPublic = PUBLIC_ROUTES.includes(path);
-    const isKiosk = KIOSK_ROUTES.includes(path);
 
     if (!session && !isPublic) {
-      router.push('/login');
+      router.push('/');
       return;
     }
 
     if (session && user && isPublic) {
       // Redirigir según rol después del login
-      if (user.role === 'kiosk') router.push('/');
-      else router.push('/admin/dashboard');
+      if (role === 'admin') router.push('/admin/dashboard');
+      else router.push('/votacion');
     }
-  }, [session, user, loading, router.pathname]);
+  }, [session, user, role, loading, router.pathname]);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      role,
+      status,
+      loading, 
+      signIn, 
+      signOut 
+    }}>
       {children}
     </AuthContext.Provider>
   );

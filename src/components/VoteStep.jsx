@@ -47,11 +47,21 @@ export default function VoteStep() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetch('/api/employees/line')
-      .then((r) => r.json())
-      .then((d) => setEmployees(d.employees || []))
-      .catch(() => setError('No se pudo cargar la lista de empleados'))
-      .finally(() => setLoading(false));
+    async function loadEmployees() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch('/api/employees/line', {
+          headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+        });
+        const d = await res.json();
+        setEmployees(d.employees || []);
+      } catch {
+        setError('No se pudo cargar la lista de empleados');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadEmployees();
   }, [setError]);
 
   const selectedEmployee = employees.find((e) => e.sapid === selected) || null;

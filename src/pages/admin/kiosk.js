@@ -29,7 +29,7 @@ export default function KioskPreviewPage() {
             <span className={styles.deviceUrl}>topone.local / votación</span>
           </div>
           <iframe
-            src="/"
+            src="/votacion"
             className={styles.iframe}
             title="Kiosco de Votación"
             sandbox="allow-scripts allow-same-origin allow-forms"

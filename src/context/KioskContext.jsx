@@ -11,7 +11,7 @@ const INITIAL_STATE = {
   error: null,
 };
 
-export function KioskProvider({ children, kioskInfo }) {
+export function KioskProvider({ children }) {
   const [state, setState] = useState(INITIAL_STATE);
 
   const setStep = useCallback((step) => {
@@ -39,7 +39,7 @@ export function KioskProvider({ children, kioskInfo }) {
 
   return (
     <KioskContext.Provider
-      value={{ ...state, kioskInfo, setStep, setEmployee, setVote, setError, reset }}
+      value={{ ...state, setStep, setEmployee, setVote, setError, reset }}
     >
       {children}
     </KioskContext.Provider>

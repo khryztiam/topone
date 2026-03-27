@@ -44,17 +44,9 @@ export default async function handler(req, res) {
     }
   }
 
-  // Fallback a env vars solo para modo demo/desarrollo sin auth
+  // Sin JWT válido → rechazar
   if (!kiosk_user_id) {
-    const envKioskId = process.env.NEXT_PUBLIC_KIOSK_USER_ID;
-    // Validar que sea un UUID válido antes de usarlo
-    if (envKioskId && /^[0-9a-f-]{36}$/.test(envKioskId)) {
-      kiosk_user_id = envKioskId;
-    } else {
-      return res.status(401).json({ error: 'Kiosco no autenticado' });
-    }
-    cod_linea = parseInt(process.env.NEXT_PUBLIC_KIOSK_COD_LINEA || '33465');
-    linea = process.env.NEXT_PUBLIC_KIOSK_LINEA || 'LINEA 15 D2-2';
+    return res.status(401).json({ error: 'Kiosco no autenticado' });
   }
 
   try {
