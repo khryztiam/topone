@@ -1,0 +1,31 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-primary: #1a56db;
+  --color-primary-dark: #1e429f;
+  --color-success: #057a55;
+  --color-error: #c81e1e;
+  --color-gold: #f59e0b;
+  --color-bg: #f3f4f6;
+  --color-surface: #ffffff;
+  --color-text: #111827;
+  --color-text-soft: #6b7280;
+  --border-radius: 12px;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}

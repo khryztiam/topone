@@ -1,0 +1,45 @@
+# Environment variables and sensitive data
+.env
+.env.local
+.env*.local
+
+# Next.js build output
+.next
+out
+dist
+
+# Dependencies
+node_modules
+package-lock.json
+yarn.lock
+
+# IDE and editor config
+.vscode
+.history
+*.swp
+*.swo
+*.idea
+.DS_Store
+
+# OS-specific files
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Excel templates and mockups - datos de ejemplo, no production
+*.xlsx
+*.xls
+*.xlsm
+
+# Employee pictures and sensitive data - datos sensibles
+public/employes_pics/
+public/employee_photos/
+.env.production
+
+# Workspace config (local VS Code)
+*.code-workspace
+

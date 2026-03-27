@@ -1,0 +1,74 @@
+/* ── Kiosk Preview Page ── */
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  height: 100%;
+}
+
+/* ── Info notice ── */
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.86rem;
+  color: #1e40af;
+  line-height: 1.5;
+}
+.noticeIcon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+/* ── Browser-like device frame ── */
+.deviceFrame {
+  flex: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+}
+
+.deviceBar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.55rem 0.85rem;
+}
+
+.dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #d1d5db;
+}
+.dot:nth-child(1) { background: #f87171; }
+.dot:nth-child(2) { background: #fbbf24; }
+.dot:nth-child(3) { background: #34d399; }
+
+.deviceUrl {
+  flex: 1;
+  margin-left: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.78rem;
+  color: var(--color-text-soft);
+  font-family: monospace;
+}
+
+/* ── Iframe fills the frame ── */
+.iframe {
+  flex: 1;
+  width: 100%;
+  border: none;
+  min-height: 520px;
+  background: #fff;
+}

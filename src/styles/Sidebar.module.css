@@ -1,0 +1,148 @@
+.sidebar {
+  width: 240px;
+  height: 100vh;
+  background: #1e293b;
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1.25rem;
+  border-bottom: 1px solid #334155;
+}
+
+.brandIcon {
+  width: 40px;
+  height: 40px;
+  background: var(--color-primary);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: #fff;
+  flex-shrink: 0;
+  letter-spacing: -0.5px;
+  gap: 0.5px;
+}
+
+.brandIconOne {
+  color: var(--color-gold);
+}
+
+.brandIconStar {
+  color: var(--color-gold);
+  font-size: 0.65rem;
+  margin-left: 1px;
+  line-height: 1;
+  align-self: flex-start;
+  margin-top: 3px;
+}
+
+.brandStar {
+  width: 9px;
+  height: 9px;
+  color: var(--color-gold);
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 3px;
+  margin-left: 1px;
+}
+
+.brandName {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #f1f5f9;
+}
+
+.brandNameOne {
+  color: var(--color-gold);
+}
+
+.nav {
+  flex: 1;
+  padding: 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+
+.navItem:hover {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+.navItem.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.icon {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
+}
+
+.footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #334155;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.userInfo {
+  flex: 1;
+  overflow: hidden;
+}
+
+.userName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userRole {
+  font-size: 0.72rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.signOut {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 1.1rem;
+  padding: 0.4rem;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.signOut:hover {
+  color: var(--color-error);
+  background: #1a1a2e;
+}
