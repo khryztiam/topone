@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useKiosk } from '@/context/KioskContext';
 import styles from '@/styles/SuccessStep.module.css';
 
-const AUTO_RESET_MS = 8000;
+const AUTO_RESET_MS = 5000;
 
 export default function SuccessStep() {
   const { reset } = useKiosk();

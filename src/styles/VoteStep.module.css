@@ -8,62 +8,42 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
+  min-height: 0; /* permite que los hijos flex hagan scroll */
   gap: 0;
   background: var(--color-bg);
 }
 
-/* ----- Banner de selección ----- */
-.selectionBanner {
+/* ----- Saludo con nombre ----- */
+.greeting {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   background: var(--color-surface);
-  border-bottom: 2px solid #e5e7eb;
-  padding: 0.85rem 1.5rem;
-  min-height: 56px;
-  transition: border-color 0.2s, background 0.2s;
+  border-bottom: 2px solid var(--color-primary);
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  color: var(--color-text);
   flex-shrink: 0;
 }
 
-.bannerActive {
-  border-bottom-color: var(--color-primary);
-  background: #eef2ff;
+.greetingWave {
+  font-size: 1.3rem;
 }
 
-.bannerLabel {
-  font-size: 0.85rem;
-  color: var(--color-text-soft);
-  white-space: nowrap;
-}
-
-.bannerName {
-  font-size: 1.1rem;
-  font-weight: 700;
+.greeting strong {
   color: var(--color-primary-dark);
-}
-
-.bannerHint {
-  font-size: 0.8rem;
-  color: var(--color-text-soft);
-  margin-left: auto;
-  font-style: italic;
-}
-
-.bannerPlaceholder {
-  font-size: 0.95rem;
-  color: var(--color-text-soft);
 }
 
 /* ----- Grilla de tarjetas ----- */
 .grid {
   flex: 1;
   display: grid;
-  /* columnas que caben naturalmente, mínimo 110px — máximo 1fr */
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem 1.5rem;
   overflow-y: auto;
   align-content: start;
+  min-height: 0;
 }
 
 /* ----- Tarjeta individual ----- */
@@ -71,15 +51,26 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.6rem 0.4rem 0.65rem;
+  gap: 0;
   background: var(--color-surface);
   border: 2px solid transparent;
   border-radius: 12px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
-  cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
   text-align: center;
+  overflow: hidden;
+}
+
+.cardButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.35rem 0.25rem 0.3rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 100%;
 }
 
 .card:hover {
@@ -97,19 +88,43 @@
   box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.15);
 }
 
+/* ----- Botón "Votar" inline bajo la foto ----- */
+.btnVoteInline {
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-top: 1px solid rgba(26, 86, 219, 0.2);
+  cursor: pointer;
+  transition: background 0.15s;
+  letter-spacing: 0.02em;
+}
+
+.btnVoteInline:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.btnVoteInline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ----- Foto / Avatar ----- */
 .photoWrap {
   position: relative;
-  width: 70px;
-  height: 70px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   overflow: visible;
   flex-shrink: 0;
 }
 
 .photo {
-  width: 70px;
-  height: 70px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   object-fit: cover;
   display: block;
@@ -122,12 +137,12 @@
 
 /* Placeholder con iniciales cuando no hay foto */
 .initials {
-  width: 70px;
-  height: 70px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: linear-gradient(135deg, #6366f1, #1a56db);
   color: #fff;
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -142,14 +157,14 @@
 /* Check verde sobre la foto */
 .checkBadge {
   position: absolute;
-  bottom: 0;
+  bottom: -2px;
   right: -4px;
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: var(--color-success);
   color: #fff;
-  font-size: 0.75rem;
+  font-size: 0.6rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -159,10 +174,10 @@
 
 /* ----- Nombre debajo de la foto ----- */
 .cardName {
-  font-size: 0.72rem;
+  font-size: 0.6rem;
   font-weight: 500;
   color: var(--color-text);
-  line-height: 1.2;
+  line-height: 1.15;
   max-width: 100%;
   overflow: hidden;
   display: -webkit-box;
@@ -178,37 +193,16 @@
 /* ----- Acciones ----- */
 .actions {
   display: flex;
-  gap: 0.75rem;
-  padding: 0.85rem 1.25rem;
+  justify-content: center;
+  padding: 0.5rem 1rem;
   background: var(--color-surface);
   border-top: 1px solid #e5e7eb;
   flex-shrink: 0;
 }
 
-.btnSubmit {
-  flex: 1;
-  padding: 0.85rem;
-  font-size: 1rem;
-  font-weight: 600;
-  background: var(--color-primary);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  transition: opacity 0.2s;
-}
-
-.btnSubmit:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.btnSubmit:hover:not(:disabled) {
-  opacity: 0.88;
-}
-
 .btnCancel {
-  padding: 0.85rem 1.25rem;
-  font-size: 0.9rem;
+  padding: 0.45rem 1.5rem;
+  font-size: 0.8rem;
   background: transparent;
   color: var(--color-text-soft);
   border: 1px solid #d1d5db;

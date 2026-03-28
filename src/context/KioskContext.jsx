@@ -19,7 +19,7 @@ export function KioskProvider({ children }) {
   }, []);
 
   const setEmployee = useCallback((employee, token) => {
-    setState((prev) => ({ ...prev, employee, token, step: 'confirm_employee' }));
+    setState((prev) => ({ ...prev, employee, token, step: 'vote' }));
   }, []);
 
   const setVote = useCallback((categoria, nominatedSapid) => {

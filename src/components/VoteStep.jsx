@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useKiosk } from '@/context/KioskContext';
 import { supabase } from '@/lib/supabaseClient';
 import styles from '@/styles/VoteStep.module.css';
 
-function EmployeeCard({ emp, selected, onClick }) {
+function EmployeeCard({ emp, selected, onClick, onVote, submitting, cardRef }) {
   const [imgSrc, setImgSrc] = useState(emp.photo_url || null);
   const initials = emp.nombre
     .split(' ')
@@ -14,37 +14,61 @@ function EmployeeCard({ emp, selected, onClick }) {
     .toUpperCase();
 
   return (
-    <button
-      className={`${styles.card} ${selected ? styles.cardSelected : ''}`}
-      onClick={onClick}
-      aria-pressed={selected}
-    >
-      <div className={styles.photoWrap}>
-        {imgSrc ? (
-          <img
-            src={imgSrc}
-            alt={emp.nombre}
-            className={styles.photo}
-            onError={() => setImgSrc(null)}
-          />
-        ) : (
-          <div className={styles.initials}>{initials}</div>
-        )}
-        {selected && <div className={styles.checkBadge}>✓</div>}
-      </div>
-      <span className={styles.cardName}>
-        {emp.nombre.split(' ').slice(0, 2).join(' ')}
-      </span>
-    </button>
+    <div ref={cardRef} className={`${styles.card} ${selected ? styles.cardSelected : ''}`}>
+      <button
+        className={styles.cardButton}
+        onClick={onClick}
+        aria-pressed={selected}
+      >
+        <div className={styles.photoWrap}>
+          {imgSrc ? (
+            <img
+              src={imgSrc}
+              alt={emp.nombre}
+              className={styles.photo}
+              onError={() => setImgSrc(null)}
+            />
+          ) : (
+            <div className={styles.initials}>{initials}</div>
+          )}
+          {selected && <div className={styles.checkBadge}>✓</div>}
+        </div>
+        <span className={styles.cardName}>
+          {emp.nombre.split(' ').slice(0, 2).join(' ')}
+        </span>
+      </button>
+      {selected && (
+        <button
+          className={styles.btnVoteInline}
+          onClick={onVote}
+          disabled={submitting}
+        >
+          {submitting ? 'Enviando...' : '✓ Votar'}
+        </button>
+      )}
+    </div>
   );
 }
 
 export default function VoteStep() {
-  const { token, setStep, setError, reset } = useKiosk();
+  const { employee: voter, token, setStep, setError, reset } = useKiosk();
   const [employees, setEmployees] = useState([]);
   const [selected, setSelected] = useState(null); // sapid del nominado
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const cardRefs = useRef({});
+
+  const handleSelect = useCallback((sapid) => {
+    const next = selected === sapid ? null : sapid;
+    setSelected(next);
+    // Scroll para que el botón "Votar" quede visible
+    if (next && cardRefs.current[next]) {
+      setTimeout(() => {
+        cardRefs.current[next]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+    }
+  }, [selected]);
 
   useEffect(() => {
     async function loadEmployees() {
@@ -63,8 +87,6 @@ export default function VoteStep() {
     }
     loadEmployees();
   }, [setError]);
-
-  const selectedEmployee = employees.find((e) => e.sapid === selected) || null;
 
   async function handleSubmit() {
     if (!selected) return;
@@ -92,25 +114,34 @@ export default function VoteStep() {
     }
   }
 
+  async function handleCancel() {
+    setCancelling(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await fetch('/api/cancel-vote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ token, sapid: voter?.sapid }),
+      });
+    } catch {
+      // Silenciar — el reset limpia todo de todas formas
+    } finally {
+      setCancelling(false);
+      reset();
+    }
+  }
+
   if (loading) return <p className={styles.loading}>Cargando empleados...</p>;
 
   return (
     <div className={styles.container}>
-      {/* Banner de selección */}
-      <div className={`${styles.selectionBanner} ${selectedEmployee ? styles.bannerActive : ''}`}>
-        {selectedEmployee ? (
-          <>
-            <span className={styles.bannerLabel}>Tu nominado:</span>
-            <strong className={styles.bannerName}>
-              {selectedEmployee.nombre.split(' ').slice(0, 2).join(' ')}
-            </strong>
-            <span className={styles.bannerHint}>Confirma abajo o cambia tu selección</span>
-          </>
-        ) : (
-          <span className={styles.bannerPlaceholder}>
-            Toca la foto del compañero que quieres nominar
-          </span>
-        )}
+      {/* Saludo con nombre completo */}
+      <div className={styles.greeting}>
+        <span className={styles.greetingWave}>👋</span>
+        <span>¡Hola, <strong>{voter?.nombre}</strong>! Selecciona a tu compañero destacado</span>
       </div>
 
       {/* Grilla de empleados */}
@@ -120,22 +151,18 @@ export default function VoteStep() {
             key={emp.sapid}
             emp={emp}
             selected={selected === emp.sapid}
-            onClick={() => setSelected(emp.sapid)}
+            onClick={() => handleSelect(emp.sapid)}
+            onVote={handleSubmit}
+            submitting={submitting}
+            cardRef={(el) => { cardRefs.current[emp.sapid] = el; }}
           />
         ))}
       </div>
 
-      {/* Acciones */}
+      {/* Solo botón cancelar */}
       <div className={styles.actions}>
-        <button
-          className={styles.btnSubmit}
-          onClick={handleSubmit}
-          disabled={!selected || submitting}
-        >
-          {submitting ? 'Enviando...' : 'Confirmar nominación'}
-        </button>
-        <button className={styles.btnCancel} onClick={reset} disabled={submitting}>
-          Cancelar
+        <button className={styles.btnCancel} onClick={handleCancel} disabled={submitting || cancelling}>
+          {cancelling ? 'Cancelando...' : 'Cancelar votación'}
         </button>
       </div>
     </div>

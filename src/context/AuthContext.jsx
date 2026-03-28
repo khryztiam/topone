@@ -49,7 +49,12 @@ export function AuthProvider({ children }) {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       if (!res.ok) {
-        throw new Error('Failed to fetch user data');
+        // Token expirado o inválido → limpiar sesión silenciosamente
+        await supabase.auth.signOut();
+        setUser(null);
+        setRole(null);
+        setStatus(null);
+        return;
       }
       const data = await res.json();
       
