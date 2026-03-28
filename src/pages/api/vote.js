@@ -7,10 +7,10 @@
  * 2. Inserta voto anónimo en anonymous_results (categoria = 'general')
  * 3. Marca token como usado y lo elimina
  * 
- * 🔒 PROTECCIÓN: Rate limiting - máximo 1 voto por usuario por día
+ * Protección contra doble voto: UNIQUE(sapid, voting_period) en vote_registry (PASO A)
+ * El rate limiting NO aplica aquí porque múltiples empleados votan desde el mismo kiosk.
  */
 import supabaseAdmin from '@/lib/supabaseAdmin';
-import { rateLimit } from '@/lib/rateLimit';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -93,9 +93,6 @@ async function handler(req, res) {
   }
 }
 
-// Exportar con rate limiting: máximo 1 voto por usuario por día (86400000 ms)
-export default rateLimit(handler, {
-  max: 1,
-  window: 86400000, // 24 horas
-  key: 'user'       // Basado en JWT (user ID)
-});
+// Sin rate limiting — la protección contra doble voto está en vote_registry UNIQUE(sapid, voting_period)
+// Múltiples empleados votan desde el mismo kiosk (mismo JWT), por lo que rate limit por user ID es incorrecto.
+export default handler;
