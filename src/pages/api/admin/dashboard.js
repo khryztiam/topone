@@ -52,6 +52,23 @@ export default async function handler(req, res) {
   const participationPct =
     totalEmployees > 0 ? Math.round((totalVotes / totalEmployees) * 100) : 0;
 
+  // 4b. Integrity check: global count of vote_registry for this period (no line filter)
+  //     Should always equal global anonymous_results count — any delta indicates a broken flow
+  const { count: globalRegistryCount } = await supabaseAdmin
+    .from('vote_registry')
+    .select('*', { count: 'exact', head: true })
+    .eq('voting_period', currentPeriod);
+
+  const { count: globalVotesCount } = await supabaseAdmin
+    .from('anonymous_results')
+    .select('*', { count: 'exact', head: true })
+    .eq('voting_period', currentPeriod)
+    .eq('categoria', 'general');
+
+  const registryCount  = globalRegistryCount || 0;
+  const globalVotes    = globalVotesCount   || 0;
+  const integrityDelta = registryCount - globalVotes; // 0 = OK, >0 = orphan registrations, <0 = impossible
+
   // 5. Employee lookup
   const empMap = {};
   (employees || []).forEach((e) => { empMap[e.sapid] = e; });
@@ -145,6 +162,7 @@ export default async function handler(req, res) {
     periods,
     filters: { cod_linea: lineaFilter },
     summary: { votes_cast: totalVotes, total_employees: totalEmployees, participation_pct: participationPct },
+    integrity: { registry_count: registryCount, votes_cast: globalVotes, delta: integrityDelta },
     donut,
     leaders,
     nominees,

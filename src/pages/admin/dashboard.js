@@ -25,6 +25,55 @@ function Avatar({ photo_url, nombre }) {
   return <div className={styles.leaderInitials}>{initials(nombre)}</div>;
 }
 
+// ── Integrity Panel ─────────────────────────────────────────────────────────
+
+function IntegrityPanel({ integrity, period }) {
+  if (!integrity) return null;
+  const { registry_count, votes_cast, delta } = integrity;
+  const ok = delta === 0;
+  const impossible = delta < 0;
+
+  return (
+    <div className={`${styles.integrityPanel} ${ok ? styles.integrityOk : impossible ? styles.integrityImpossible : styles.integrityWarn}`}>
+      <div className={styles.integrityLeft}>
+        <span className={styles.integrityIcon}>{ok ? '✅' : impossible ? '🔴' : '⚠️'}</span>
+        <div>
+          <p className={styles.integrityTitle}>
+            {ok ? 'Integridad de datos — OK' : impossible ? 'Integridad — Inconsistencia crítica' : 'Integridad — Discrepancia detectada'}
+          </p>
+          <p className={styles.integrityDesc}>
+            {ok
+              ? `Todos los registros del período ${period} son consistentes.`
+              : impossible
+              ? `Hay ${Math.abs(delta)} voto(s) anónimos sin bloqueo de SAPID. Situación anómala.`
+              : `${delta} SAPID(s) bloqueados sin voto registrado. Posible fallo en PASO B del flujo.`
+            }
+          </p>
+        </div>
+      </div>
+      <div className={styles.integrityRight}>
+        <div className={styles.integrityMetric}>
+          <span className={styles.integrityNum}>{votes_cast}</span>
+          <span className={styles.integrityLabel}>Votos emitidos</span>
+          <span className={styles.integrityTableName}>(anonymous_results)</span>
+        </div>
+        <div className={styles.integrityEquals}>=</div>
+        <div className={styles.integrityMetric}>
+          <span className={`${styles.integrityNum} ${!ok ? styles.integrityNumBad : ''}`}>{registry_count}</span>
+          <span className={styles.integrityLabel}>SAPIDs bloqueados</span>
+          <span className={styles.integrityTableName}>(vote_registry)</span>
+        </div>
+        {!ok && (
+          <div className={styles.integrityDelta}>
+            <span className={styles.integrityDeltaNum}>{delta > 0 ? `+${delta}` : delta}</span>
+            <span className={styles.integrityLabel}>diferencia</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DonutChart({ pct, votesCast, totalEmployees, period }) {
   const r = 70, cx = 80, cy = 80;
   const circumference = 2 * Math.PI * r;
@@ -115,6 +164,9 @@ export default function DashboardPage() {
               <span className={`${styles.statValue} ${styles.green}`}>{data.summary.total_employees}</span>
             </div>
           </div>
+
+          {/* ── Integrity check panel ── */}
+          <IntegrityPanel integrity={data.integrity} period={data.period} />
 
           {/* ── Main section ── */}
           <div className={styles.mainSection}>
