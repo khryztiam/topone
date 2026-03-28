@@ -340,6 +340,176 @@ function ResetModal({ session, allPeriods, allLineas, initialPeriod, initialLine
   );
 }
 
+// ── Reset Registry Modal ───────────────────────────────────────────────────────
+function ResetRegistryModal({ session, allPeriods, allLineas, initialPeriod, initialLinea, onClose, onReset }) {
+  const [period, setPeriod]     = useState(initialPeriod || '');
+  const [codLinea, setCodLinea] = useState(initialLinea != null ? String(initialLinea) : '');
+  const [reason, setReason]     = useState('');
+  const [preview, setPreview]   = useState(null);
+  const [loading, setLoading]   = useState(false);
+  const [confirm, setConfirm]   = useState('');
+  const [step, setStep]         = useState(1);
+  const [result, setResult]     = useState(null);
+
+  async function handlePreview() {
+    if (!period) return;
+    setLoading(true);
+    setPreview(null);
+    try {
+      const params = new URLSearchParams({ period });
+      if (codLinea) params.set('cod_linea', codLinea);
+      const res  = await fetch(`/api/admin/reset-registry?${params}`, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+      const lineaNombre = allLineas?.find((l) => String(l.cod_linea) === String(codLinea))?.nombre;
+      setPreview({ period, codLinea, count: data.count ?? null, lineaNombre });
+      setStep(2);
+    } catch {
+      setPreview({ period, codLinea });
+      setStep(2);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleReset() {
+    if (confirm !== CONFIRM_WORD) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/reset-registry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ period, cod_linea: codLinea ? parseInt(codLinea, 10) : undefined, reason }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setResult({ type: 'error', message: data.error });
+      } else {
+        setResult({ type: 'success', deleted: data.deleted });
+        setStep(3);
+        onReset();
+      }
+    } catch {
+      setResult({ type: 'error', message: 'Error de red.' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className={styles.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={`${styles.modal} ${styles.resetModal}`}>
+        <div className={styles.modalHeader}>
+          <h2>🧹 Limpiar Registro de Votantes</h2>
+          <button className={styles.closeBtn} onClick={onClose}>✕</button>
+        </div>
+        <div className={styles.modalBody}>
+          <div className={styles.stepRow}>
+            <span className={`${styles.stepDot} ${step >= 1 ? styles.stepDotActive : ''}`}>1</span>
+            <span className={styles.stepLine} />
+            <span className={`${styles.stepDot} ${step >= 2 ? styles.stepDotActive : ''}`}>2</span>
+            <span className={styles.stepLine} />
+            <span className={`${styles.stepDot} ${step >= 3 ? styles.stepDotActive : ''}`}>3</span>
+          </div>
+          <div className={styles.stepLabels}>
+            <span className={step >= 1 ? styles.stepLabelActive : ''}>Período</span>
+            <span className={step >= 2 ? styles.stepLabelActive : ''}>Confirmar</span>
+            <span className={step >= 3 ? styles.stepLabelActive : ''}>Listo</span>
+          </div>
+
+          {step === 1 && (
+            <>
+              <div className={styles.resetAlert}>
+                ⚠️ Esto elimina los registros de <strong>vote_registry</strong> (quién votó),
+                permitiendo que esos empleados <strong>vuelvan a votar</strong>. No borra los votos anónimos.
+                Úsalo para limpiar SAPIDs de prueba.
+              </div>
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel}>Período *</label>
+                <select className={styles.filterSelect} value={period}
+                  onChange={(e) => { setPeriod(e.target.value); }}>
+                  <option value="">— seleccionar —</option>
+                  {allPeriods.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel}>Línea (opcional)</label>
+                <select className={styles.filterSelect} value={codLinea}
+                  onChange={(e) => setCodLinea(e.target.value)}>
+                  <option value="">— todas las líneas —</option>
+                  {(allLineas || []).map((l) => (
+                    <option key={l.cod_linea} value={l.cod_linea}>{l.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel}>Motivo (opcional)</label>
+                <input className={styles.filterInput}
+                  placeholder="ej. limpiar SAPIDs de prueba…"
+                  value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} />
+              </div>
+              <div className={styles.modalActions}>
+                <button className={styles.btnCancel} onClick={onClose}>Cancelar</button>
+                <button className={styles.btnDanger} onClick={handlePreview} disabled={!period || loading}>
+                  {loading ? 'Consultando…' : 'Continuar →'}
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <div className={styles.previewBox}>
+                <p className={styles.previewTitle}>Limpiar vote_registry</p>
+                <p className={styles.previewSub}>
+                  Se eliminarán{' '}
+                  <strong>{preview?.count != null ? preview.count : 'los'}</strong>{' '}
+                  registros de votantes
+                  {preview?.lineaNombre
+                    ? <> de la línea <strong>{preview.lineaNombre}</strong></>  
+                    : ' de todas las líneas'}{' '}
+                  del período <strong>{period}</strong>.
+                  <br />Los empleados podrán volver a votar.
+                </p>
+              </div>
+              <p className={styles.confirmInstruction}>
+                Para confirmar, escribe <strong>{CONFIRM_WORD}</strong> a continuación:
+              </p>
+              <input
+                className={`${styles.filterInput} ${confirm && confirm !== CONFIRM_WORD ? styles.filterInputError : ''}`}
+                placeholder={CONFIRM_WORD}
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value.toUpperCase())}
+                autoFocus
+              />
+              {result?.type === 'error' && (
+                <div className={`${styles.importResult} ${styles.importError}`}>{result.message}</div>
+              )}
+              <div className={styles.modalActions}>
+                <button className={styles.btnCancel} onClick={() => { setStep(1); setConfirm(''); setResult(null); }}>← Atrás</button>
+                <button className={styles.btnDanger} onClick={handleReset}
+                  disabled={confirm !== CONFIRM_WORD || loading}>
+                  {loading ? 'Eliminando…' : '🧹 Limpiar ahora'}
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 3 && result?.type === 'success' && (
+            <div className={styles.doneBox}>
+              <div className={styles.doneIcon}>✅</div>
+              <p className={styles.doneTitle}>{result.deleted} registros eliminados de vote_registry</p>
+              <p className={styles.doneSub}>Los empleados de ese período pueden volver a votar. Acción registrada en auditoría.</p>
+              <button className={styles.btnSave} onClick={onClose}>Cerrar</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Audit Log ─────────────────────────────────────────────────────────────────
 function AuditLog({ session }) {
   const [records, setRecords] = useState([]);
@@ -550,6 +720,99 @@ function TopResultsTable({ data, isFiltered }) {
   );
 }
 
+// ── Integrity Panel ─────────────────────────────────────────────────────────
+function IntegrityPanel({ integrity, period }) {
+  if (!integrity) return null;
+  const [expanded, setExpanded] = useState(false);
+  const { registry_count, votes_cast, delta, by_line = [], unresolved = 0 } = integrity;
+  const ok         = delta === 0;
+  const impossible = delta < 0;
+
+  // Only lines with discrepancy
+  const badLines = by_line.filter((l) => l.delta !== 0);
+
+  return (
+    <div className={`${styles.integrityPanel} ${ok ? styles.integrityOk : impossible ? styles.integrityImpossible : styles.integrityWarn}`}>
+      <div className={styles.integrityLeft}>
+        <span className={styles.integrityIcon}>{ok ? '✅' : impossible ? '🔴' : '⚠️'}</span>
+        <div>
+          <p className={styles.integrityTitle}>
+            {ok ? 'Integridad — OK' : impossible ? 'Integridad — Inconsistencia crítica' : 'Integridad — Discrepancia detectada'}
+          </p>
+          <p className={styles.integrityDesc}>
+            {ok
+              ? `Todos los registros del período ${period} son consistentes.`
+              : impossible
+              ? `Hay ${Math.abs(delta)} voto(s) anónimos sin bloqueo de SAPID.`
+              : `${delta} SAPID(s) bloqueados sin voto — usa "🧹 Limpiar Registro" para liberar.`}
+            {unresolved > 0 && ` (${unresolved} SAPIDs sin línea asignada)`}
+          </p>
+          {!ok && badLines.length > 0 && (
+            <button className={styles.integrityToggle} onClick={() => setExpanded((v) => !v)}>
+              {expanded ? '▲ Ocultar desglose' : `▼ Ver desglose por línea (${badLines.length} con delta)`}
+            </button>
+          )}
+        </div>
+      </div>
+      <div className={styles.integrityRight}>
+        <div className={styles.integrityMetric}>
+          <span className={styles.integrityNum}>{votes_cast}</span>
+          <span className={styles.integrityLabel}>Votos emitidos</span>
+          <span className={styles.integrityTableName}>(anonymous_results)</span>
+        </div>
+        <div className={styles.integrityEquals}>=</div>
+        <div className={styles.integrityMetric}>
+          <span className={`${styles.integrityNum} ${!ok ? styles.integrityNumBad : ''}`}>{registry_count}</span>
+          <span className={styles.integrityLabel}>SAPIDs bloqueados</span>
+          <span className={styles.integrityTableName}>(vote_registry)</span>
+        </div>
+        {!ok && (
+          <div className={styles.integrityDelta}>
+            <span className={styles.integrityDeltaNum}>{delta > 0 ? `+${delta}` : delta}</span>
+            <span className={styles.integrityLabel}>delta</span>
+          </div>
+        )}
+      </div>
+
+      {expanded && badLines.length > 0 && (
+        <div className={styles.integrityBreakdown}>
+          <table className={styles.integrityTable}>
+            <thead>
+              <tr>
+                <th>Línea</th>
+                <th>Registros</th>
+                <th>Votos</th>
+                <th>Delta</th>
+                <th>Diagnóstico</th>
+              </tr>
+            </thead>
+            <tbody>
+              {badLines.map((l) => (
+                <tr key={l.cod_linea} className={l.delta < 0 ? styles.integrityRowImpossible : styles.integrityRowWarn}>
+                  <td>{l.linea || `Línea ${l.cod_linea}`}</td>
+                  <td>{l.registry_count}</td>
+                  <td>{l.votes_cast}</td>
+                  <td className={styles.integrityDeltaCell}>
+                    {l.delta > 0 ? `+${l.delta}` : l.delta}
+                  </td>
+                  <td className={styles.integrityDiag}>
+                    {l.delta > 0
+                      ? `${l.delta} registro${l.delta > 1 ? 's' : ''} huérfano${l.delta > 1 ? 's' : ''} — kiosko bloqueó pero no registró voto`
+                      : `${Math.abs(l.delta)} voto${Math.abs(l.delta) > 1 ? 's' : ''} sin registro — posible doble voto`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className={styles.integrityBreakdownHint}>
+            💡 Usa <strong>🧹 Limpiar Registro</strong> filtrando por la línea afectada para liberar solo esos SAPIDs.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ResultsPage() {
   const { user, session }       = useAuth();
@@ -560,6 +823,7 @@ export default function ResultsPage() {
   const [codLinea, setCodLinea] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [resetOpen, setResetOpen]   = useState(false);
+  const [registryResetOpen, setRegistryResetOpen] = useState(false);
   const [auditOpen, setAuditOpen]   = useState(false);
 
   const canImport = ['admin', 'suprrhh'].includes(user?.role);
@@ -598,75 +862,92 @@ export default function ResultsPage() {
   return (
     <AdminLayout title="Resultados" requiredRoles={['admin', 'suprrhh']}>
 
-      {/* ── Top bar ── */}
-      <div className={styles.topBar}>
-        <div className={styles.filtersRow}>
-          <div className={styles.filterGroup}>
-            <label className={styles.filterLabel}>Período</label>
-            <select className={styles.filterSelect} value={period}
-              onChange={(e) => setPeriod(e.target.value)}>
-              {(data?.periods || (period ? [period] : [])).map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
-          <div className={styles.filterGroup}>
-            <label className={styles.filterLabel}>Línea</label>
-            <select className={styles.filterSelect} value={codLinea}
-              onChange={(e) => setCodLinea(e.target.value)}>
-              <option value="">Todas las líneas</option>
-              {allLines.map((l) => (
-                <option key={l.cod_linea} value={l.cod_linea}>{l.nombre}</option>
-              ))}
-            </select>
+      {/* ── Control bar ── */}
+      <div className={styles.controlBar}>
+        <div className={styles.controlSection}>
+          <span className={styles.controlSectionLabel}>Filtros</span>
+          <div className={styles.filtersRow}>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel}>Período</label>
+              <select className={styles.filterSelect} value={period}
+                onChange={(e) => setPeriod(e.target.value)}>
+                {(data?.periods || (period ? [period] : [])).map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel}>Línea</label>
+              <select className={styles.filterSelect} value={codLinea}
+                onChange={(e) => setCodLinea(e.target.value)}>
+                <option value="">Todas las líneas</option>
+                {allLines.map((l) => (
+                  <option key={l.cod_linea} value={l.cod_linea}>{l.nombre}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className={styles.actions}>
-          {canImport && (
-            <button className={styles.btnImport} onClick={() => setImportOpen(true)}>
-              📂 Importar Maestro
-            </button>
-          )}
-          <a
-            className={`${styles.btnExport} ${totalVotes === 0 ? styles.btnExportDisabled : ''}`}
-            href={totalVotes > 0 ? exportUrl : undefined}
-            download={totalVotes > 0 ? true : undefined}
-            title={totalVotes === 0 ? 'Sin votos en este período' : 'Exportar a Excel'}
-          >
-            📥 Exportar Excel
-          </a>
-          {canReset && (
-            <button className={styles.btnReset} onClick={() => setResetOpen(true)}>
-              🗑️ Reset
-            </button>
-          )}
+        <div className={styles.controlSection}>
+          <span className={styles.controlSectionLabel}>Acciones</span>
+          <div className={styles.actions}>
+            {canImport && (
+              <button className={styles.btnImport} onClick={() => setImportOpen(true)}
+                title="Importar maestro de empleados">
+                📂 Importar
+              </button>
+            )}
+            <a
+              className={`${styles.btnExport} ${totalVotes === 0 ? styles.btnExportDisabled : ''}`}
+              href={totalVotes > 0 ? exportUrl : undefined}
+              download={totalVotes > 0 ? true : undefined}
+              title={totalVotes === 0 ? 'Sin votos en este período' : 'Exportar resultados a Excel'}
+            >
+              📥 Exportar
+            </a>
+            {canReset && (
+              <button className={styles.btnReset} onClick={() => setResetOpen(true)}
+                title="Borrar votos anónimos del período">
+                🗑️ Reset Votos
+              </button>
+            )}
+            {canReset && (
+              <button className={styles.btnResetRegistry} onClick={() => setRegistryResetOpen(true)}
+                title="Liberar SAPIDs para volver a votar">
+                🧹 Limpiar Registro
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* ── Summary cards ── */}
       <div className={styles.statsGrid}>
-        <div className={styles.statCard}>
-          <span className={styles.statIcon}>🗳️</span>
+        <div className={`${styles.statCard} ${styles.statCardBlue}`}>
+          <div className={`${styles.statIconWrap} ${styles.statIconBlue}`}>🗳️</div>
           <span className={styles.statLabel}>Votos emitidos</span>
           <span className={`${styles.statValue} ${styles.blue}`}>{totalVotes}</span>
         </div>
-        <div className={styles.statCard}>
-          <span className={styles.statIcon}>👥</span>
+        <div className={`${styles.statCard} ${styles.statCardGreen}`}>
+          <div className={`${styles.statIconWrap} ${styles.statIconGreen}`}>👥</div>
           <span className={styles.statLabel}>Total empleados</span>
           <span className={`${styles.statValue} ${styles.green}`}>{totalEmp}</span>
         </div>
-        <div className={styles.statCard}>
-          <span className={styles.statIcon}>📊</span>
+        <div className={`${styles.statCard} ${styles.statCardPurple}`}>
+          <div className={`${styles.statIconWrap} ${styles.statIconPurple}`}>📊</div>
           <span className={styles.statLabel}>Participación global</span>
           <span className={`${styles.statValue} ${styles.purple}`}>{globalPct}%</span>
         </div>
-        <div className={styles.statCard}>
-          <span className={styles.statIcon}>🏭</span>
+        <div className={`${styles.statCard} ${styles.statCardOrange}`}>
+          <div className={`${styles.statIconWrap} ${styles.statIconOrange}`}>🏭</div>
           <span className={styles.statLabel}>Líneas con votos</span>
           <span className={`${styles.statValue} ${styles.orange}`}>{linesWithVotes}</span>
         </div>
       </div>
+
+      {/* ── Integrity panel ── */}
+      <IntegrityPanel integrity={data?.integrity} period={period} />
 
       {/* ── Top results table ── */}
       <section className={styles.topSection}>
@@ -704,6 +985,17 @@ export default function ResultsPage() {
           initialPeriod={period}
           initialLinea={codLinea}
           onClose={() => setResetOpen(false)}
+          onReset={() => fetchResults(period, codLinea)}
+        />
+      )}
+      {registryResetOpen && (
+        <ResetRegistryModal
+          session={session}
+          allPeriods={data?.periods || (period ? [period] : [])}
+          allLineas={allLines}
+          initialPeriod={period}
+          initialLinea={codLinea}
+          onClose={() => setRegistryResetOpen(false)}
           onReset={() => fetchResults(period, codLinea)}
         />
       )}

@@ -105,10 +105,86 @@ export default async function handler(req, res) {
     }))
     .sort((a, b) => a.cod_linea - b.cod_linea);
 
+  // ── Integrity check (always unfiltered / global) ────────────────────────────
+  // vote_registry has no cod_linea → fetch all sapids and resolve via empMap
+  const { data: registryRows } = await supabaseAdmin
+    .from('vote_registry')
+    .select('sapid')
+    .eq('voting_period', currentPeriod);
+
+  const { count: globalVotesCount } = await supabaseAdmin
+    .from('anonymous_results')
+    .select('*', { count: 'exact', head: true })
+    .eq('voting_period', currentPeriod)
+    .eq('categoria', 'general');
+
+  // All employees (unfiltered) needed to resolve sapid → cod_linea for registry
+  const { data: allEmployees } = await supabaseAdmin
+    .from('employees_master')
+    .select('sapid, cod_linea, linea')
+    .eq('active', true);
+
+  const allEmpMap = {};
+  (allEmployees || []).forEach((e) => { allEmpMap[e.sapid] = e; });
+
+  // Registry count per line (resolved via employees_master)
+  const registryByLinea = {};
+  let unresolved = 0;
+  (registryRows || []).forEach(({ sapid }) => {
+    const emp = allEmpMap[sapid];
+    if (!emp) { unresolved++; return; }
+    if (!registryByLinea[emp.cod_linea]) {
+      registryByLinea[emp.cod_linea] = { cod_linea: emp.cod_linea, linea: emp.linea, registry_count: 0 };
+    }
+    registryByLinea[emp.cod_linea].registry_count++;
+  });
+
+  // Anonymous votes per line (unfiltered)
+  const { data: allVotesRows } = await supabaseAdmin
+    .from('anonymous_results')
+    .select('cod_linea, linea')
+    .eq('voting_period', currentPeriod)
+    .eq('categoria', 'general');
+
+  const votesByLineaGlobal = {};
+  (allVotesRows || []).forEach(({ cod_linea, linea }) => {
+    if (!votesByLineaGlobal[cod_linea]) {
+      votesByLineaGlobal[cod_linea] = { cod_linea, linea, votes_cast: 0 };
+    }
+    votesByLineaGlobal[cod_linea].votes_cast++;
+  });
+
+  // Merge into per-line integrity rows (only lines with any activity)
+  const allLineasSet = new Set([
+    ...Object.keys(registryByLinea),
+    ...Object.keys(votesByLineaGlobal),
+  ]);
+
+  const integrityByLine = [...allLineasSet]
+    .map((k) => {
+      const reg   = registryByLinea[k]    || { registry_count: 0 };
+      const votes = votesByLineaGlobal[k] || { votes_cast: 0 };
+      const linea = reg.linea || votes.linea || k;
+      const rc    = reg.registry_count;
+      const vc    = votes.votes_cast;
+      return { cod_linea: Number(k), linea, registry_count: rc, votes_cast: vc, delta: rc - vc };
+    })
+    .sort((a, b) => a.cod_linea - b.cod_linea);
+
+  const regCount   = (registryRows || []).length;
+  const votesCount = globalVotesCount || 0;
+
   return res.status(200).json({
     period: currentPeriod,
     periods,
     filters: { cod_linea: lineaFilter },
     lines: lineResults,
+    integrity: {
+      registry_count: regCount,
+      votes_cast:     votesCount,
+      delta:          regCount - votesCount,
+      unresolved,
+      by_line:        integrityByLine,
+    },
   });
 }
